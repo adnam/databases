@@ -1,7 +1,9 @@
 import json
 import typing
 from datetime import date, datetime
+from packaging import version
 
+from sqlalchemy import __version__ as sqlalchemy_version
 from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.engine.row import Row as SQLRow
 from sqlalchemy.sql.compiler import _CompileLabel
@@ -84,6 +86,7 @@ class Record(RecordInterface):
 
 
 class Row(SQLRow):
+
     def __getitem__(self, key: typing.Any) -> typing.Any:
         """
         An instance of a Row in SQLAlchemy allows the access
@@ -140,3 +143,25 @@ def create_column_maps(
         else:
             column_map_full[str(column[0])] = (idx, datatype)
     return column_map, column_map_int, column_map_full
+
+
+if version.parse(sqlalchemy_version) >= version.parse("2.0.10"):
+
+    def make_row(metadata, row):
+        return Row(
+            metadata,
+            metadata._effective_processors,
+            metadata._key_to_index,
+            row,
+        )
+
+else:
+
+    def make_row(metadata, row):
+        return Row(
+            metadata,
+            metadata._processors,
+            metadata._keymap,
+            Row._default_key_style,
+            row,
+        )

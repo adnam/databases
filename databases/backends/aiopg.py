@@ -7,11 +7,10 @@ import uuid
 import aiopg
 from sqlalchemy.engine.cursor import CursorResultMetaData
 from sqlalchemy.engine.interfaces import Dialect, ExecutionContext
-from sqlalchemy.engine.row import Row
 from sqlalchemy.sql import ClauseElement
 from sqlalchemy.sql.ddl import DDLElement
 
-from databases.backends.common.records import Record, Row, create_column_maps
+from databases.backends.common.records import Record, create_column_maps, make_row
 from databases.backends.compilers.psycopg import PGCompiler_psycopg
 from databases.backends.dialects.psycopg import PGDialect_psycopg
 from databases.core import LOG_EXTRA, DatabaseURL
@@ -130,11 +129,8 @@ class AiopgConnection(ConnectionBackend):
             rows = await cursor.fetchall()
             metadata = CursorResultMetaData(context, cursor.description)
             rows = [
-                Row(
+                make_row(
                     metadata,
-                    metadata._processors,
-                    metadata._keymap,
-                    Row._default_key_style,
                     row,
                 )
                 for row in rows
@@ -155,11 +151,8 @@ class AiopgConnection(ConnectionBackend):
             if row is None:
                 return None
             metadata = CursorResultMetaData(context, cursor.description)
-            row = Row(
+            row = make_row(
                 metadata,
-                metadata._processors,
-                metadata._keymap,
-                Row._default_key_style,
                 row,
             )
             return Record(row, result_columns, dialect, column_maps)
@@ -198,11 +191,8 @@ class AiopgConnection(ConnectionBackend):
             await cursor.execute(query_str, args)
             metadata = CursorResultMetaData(context, cursor.description)
             async for row in cursor:
-                record = Row(
+                record = make_row(
                     metadata,
-                    metadata._processors,
-                    metadata._keymap,
-                    Row._default_key_style,
                     row,
                 )
                 yield Record(record, result_columns, dialect, column_maps)

@@ -9,7 +9,7 @@ from sqlalchemy.engine.interfaces import Dialect, ExecutionContext
 from sqlalchemy.sql import ClauseElement
 from sqlalchemy.sql.ddl import DDLElement
 
-from databases.backends.common.records import Record, Row, create_column_maps
+from databases.backends.common.records import Record, create_column_maps, make_row
 from databases.core import LOG_EXTRA, DatabaseURL
 from databases.interfaces import ConnectionBackend, DatabaseBackend, TransactionBackend
 
@@ -82,16 +82,7 @@ class SQLiteConnection(ConnectionBackend):
         async with self._connection.execute(query_str, args) as cursor:
             rows = await cursor.fetchall()
             metadata = CursorResultMetaData(context, cursor.description)
-            rows = [
-                Row(
-                    metadata,
-                    metadata._processors,
-                    metadata._keymap,
-                    Row._default_key_style,
-                    row,
-                )
-                for row in rows
-            ]
+            rows = [make_row(metadata, row) for row in rows]
             return [Record(row, result_columns, dialect, column_maps) for row in rows]
 
     async def fetch_one(self, query: ClauseElement) -> typing.Optional[Record]:
@@ -105,11 +96,8 @@ class SQLiteConnection(ConnectionBackend):
             if row is None:
                 return None
             metadata = CursorResultMetaData(context, cursor.description)
-            row = Row(
+            row = make_row(
                 metadata,
-                metadata._processors,
-                metadata._keymap,
-                Row._default_key_style,
                 row,
             )
             return Record(row, result_columns, dialect, column_maps)
@@ -139,11 +127,8 @@ class SQLiteConnection(ConnectionBackend):
         async with self._connection.execute(query_str, args) as cursor:
             metadata = CursorResultMetaData(context, cursor.description)
             async for row in cursor:
-                record = Row(
+                record = make_row(
                     metadata,
-                    metadata._processors,
-                    metadata._keymap,
-                    Row._default_key_style,
                     row,
                 )
                 yield Record(record, result_columns, dialect, column_maps)
